@@ -14,6 +14,7 @@ from huggingface_hub import (
     hf_hub_download,
     try_to_load_from_cache,
 )
+from huggingface_hub import constants as hf_constants
 from loguru import logger
 from transformers import AutoConfig
 
@@ -119,7 +120,13 @@ def recipe_from_huggingface_model_id(
     # Use custom HF_ENDPOINT
     hf_api = HfApi()
     model_id_url = f"{hf_api.endpoint.rstrip('/')}/{hf_stub}"
-    request = requests.head(model_id_url)
+    try:
+        request = requests.head(model_id_url, timeout=hf_constants.HF_HUB_ETAG_TIMEOUT)
+    except requests.RequestException as e:
+        logger.debug(
+            f"Unable to reach {model_id_url}: {e}. Skipping recipe resolution."
+        )
+        return None
 
     if request.status_code != 200:
         logger.debug(
